@@ -76,7 +76,7 @@ int HTTPConnection::setURL(const string& URL)
     return invokeLib(curl_easy_setopt,_p->c,CURLOPT_URL,URL.c_str());
 }
 
-static size_t _general_writer(char* ptr,size_t sz,size_t n,void* userfn)
+static size_t _general_data_callback(char* ptr,size_t sz,size_t n,void* userfn)
 {
     int sum=sz*n;
     return (*reinterpret_cast<function<int(char*,int)>*>(userfn))(ptr,sum);
@@ -84,15 +84,22 @@ static size_t _general_writer(char* ptr,size_t sz,size_t n,void* userfn)
 
 int HTTPConnection::setDataWriter(const function<int(char*,int)>& fn)
 {
-    invokeLib(curl_easy_setopt,_p->c,CURLOPT_WRITEFUNCTION,_general_writer);
+    invokeLib(curl_easy_setopt,_p->c,CURLOPT_WRITEFUNCTION,_general_data_callback);
     invokeLib(curl_easy_setopt,_p->c,CURLOPT_WRITEDATA,&fn);
     return 0;
 }
 
-int HTTPConnection::setHeaderWriter(const std::function<int(char*, int)>& fn)
+int HTTPConnection::setHeaderWriter(const function<int(char*, int)>& fn)
 {
-    invokeLib(curl_easy_setopt,_p->c,CURLOPT_HEADERFUNCTION,_general_writer);
+    invokeLib(curl_easy_setopt,_p->c,CURLOPT_HEADERFUNCTION,_general_data_callback);
     invokeLib(curl_easy_setopt,_p->c,CURLOPT_HEADERDATA,&fn);
+    return 0;
+}
+
+int HTTPConnection::setDataReader(const function<int(char*, int)>& fn)
+{
+    invokeLib(curl_easy_setopt,_p->c,CURLOPT_READFUNCTION,_general_data_callback);
+    invokeLib(curl_easy_setopt,_p->c,CURLOPT_READDATA,&fn);
     return 0;
 }
 

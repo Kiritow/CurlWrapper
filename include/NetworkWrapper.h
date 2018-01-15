@@ -23,7 +23,6 @@ public:
     int setDataInputFile(const std::string& filename);
     int setTimeout(int second);
 
-
     /// HTTP Option
     int setAcceptEncoding(const std::string& encoding);
     int setAcceptEncodingAll();
