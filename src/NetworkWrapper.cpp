@@ -1,39 +1,35 @@
 #include "NetworkWrapper.h"
 #include "curl/curl.h"
 #include <vector>
+#include <sstream>
 using namespace std;
 
 #define invokeLib(LibFn,arg1,args...) _p->lasterr=LibFn(arg1,##args)
 
-static int _cnt_native_lib=0;
-
-int InitNativeLib()
+class _libcurl_native_init_class
 {
-    if(_cnt_native_lib==0 && curl_global_init(CURL_GLOBAL_ALL)!=0)
+public:
+    _libcurl_native_init_class()
     {
-        return -1;
+        curl_global_init(CURL_GLOBAL_ALL);
     }
-    else
-    {
-        _cnt_native_lib++;
-        return 0;
-    }
-}
-
-int CleanUpNativeLib()
-{
-    if(_cnt_native_lib==1)
+    ~_libcurl_native_init_class()
     {
         curl_global_cleanup();
-        _cnt_native_lib=0;
-        return 0;
     }
-    else
+
+    static _libcurl_native_init_class& get()
     {
-        _cnt_native_lib--;
-        return 0;
+        if(_ptr==NULL)
+        {
+            _ptr=new _libcurl_native_init_class;
+        }
+        return *_ptr;
     }
-}
+
+private:
+    static _libcurl_native_init_class* _ptr;
+};
 
 class HTTPConnection::_impl
 {
@@ -82,6 +78,22 @@ static size_t _general_data_callback(char* ptr,size_t sz,size_t n,void* userfn)
     return (*reinterpret_cast<function<int(char*,int)>*>(userfn))(ptr,sum);
 }
 
+struct _buffered_data_write_control_block
+{
+    void* ptr;
+    int maxsz;
+    int used;
+};
+
+static size_t _buffered_data_writer_callback(char* ptr,size_t sz,size_t n,void* pblock)
+{
+    int sum=sz*n;
+    _buffered_data_write_control_block* p=(_buffered_data_write_control_block*)pblock;
+    memcpy((char*)p->ptr+p->used,ptr,sum);
+    p->used+=sum;
+    return n;/// follow fwrite return result.
+}
+
 int HTTPConnection::setDataWriter(const function<int(char*,int)>& fn)
 {
     invokeLib(curl_easy_setopt,_p->c,CURLOPT_WRITEFUNCTION,_general_data_callback);
@@ -100,6 +112,60 @@ int HTTPConnection::setDataReader(const function<int(char*, int)>& fn)
 {
     invokeLib(curl_easy_setopt,_p->c,CURLOPT_READFUNCTION,_general_data_callback);
     invokeLib(curl_easy_setopt,_p->c,CURLOPT_READDATA,&fn);
+    return 0;
+}
+
+int HTTPConnection::setHeaderOutputBuffer(void* ptr, int maxsz)
+{
+    if(ptr==NULL)
+    {
+        ptr=malloc(maxsz);
+        if(ptr==NULL) return -2;
+    }
+
+    _buffered_data_write_control_block* pb=(_buffered_data_write_control_block*)malloc(sizeof(_buffered_data_write_control_block));
+    if(pb==NULL)
+    {
+        return -2;
+    }
+
+    memset(ptr,0,maxsz);
+
+
+    pb->ptr=ptr;
+    pb->maxsz=maxsz;
+    pb->used=0;
+
+    invokeLib(curl_easy_setopt,_p->c,CURLOPT_HEADERFUNCTION,_buffered_data_writer_callback);
+    invokeLib(curl_easy_setopt,_p->c,CURLOPT_HEADERDATA,pb);
+
+    return 0;
+}
+
+int HTTPConnection::setDataOutputBuffer(void* ptr, int maxsz)
+{
+    if(ptr==NULL)
+    {
+        ptr=malloc(maxsz);
+        if(ptr==NULL) return -2;
+    }
+
+    _buffered_data_write_control_block* pb=(_buffered_data_write_control_block*)malloc(sizeof(_buffered_data_write_control_block));
+    if(pb==NULL)
+    {
+        return -2;
+    }
+
+    memset(ptr,0,maxsz);
+
+
+    pb->ptr=ptr;
+    pb->maxsz=maxsz;
+    pb->used=0;
+
+    invokeLib(curl_easy_setopt,_p->c,CURLOPT_WRITEFUNCTION,_buffered_data_writer_callback);
+    invokeLib(curl_easy_setopt,_p->c,CURLOPT_WRITEDATA,pb);
+
     return 0;
 }
 
@@ -140,6 +206,51 @@ int HTTPConnection::setDataInputFile(const std::string& filename)
     return 0;
 }
 
+int HTTPConnection::enableCookieEngine()
+{
+    return setCookieInputFile("-");/// follow libcurl official document, this can enable the cookie engine with no side effects.
+}
+
+int HTTPConnection::setCookieInputFile(const std::string& filename)
+{
+    return invokeLib(curl_easy_setopt,_p->c,CURLOPT_COOKIEFILE,filename.c_str());
+}
+
+int HTTPConnection::setCookieOutputFile(const std::string& filename)
+{
+    return invokeLib(curl_easy_setopt,_p->c,CURLOPT_COOKIEJAR,filename.c_str());
+}
+
+int HTTPConnection::setCookieSession(bool new_session)
+{
+    return invokeLib(curl_easy_setopt,_p->c,CURLOPT_COOKIESESSION,new_session?1:0);
+}
+
+int HTTPConnection::addCookie(const std::string& raw_cookie)
+{
+    return invokeLib(curl_easy_setopt,_p->c,CURLOPT_COOKIELIST,raw_cookie.c_str());
+}
+
+int HTTPConnection::clearCookie()
+{
+    return addCookie("ALL");
+}
+
+int HTTPConnection::clearSessionCookie()
+{
+    return addCookie("SESS");
+}
+
+int HTTPConnection::flushCookie()
+{
+    return addCookie("FLUSH");
+}
+
+int HTTPConnection::reloadCookie()
+{
+    return addCookie("RELOAD");
+}
+
 int HTTPConnection::setTimeout(int second)
 {
     return curl_easy_setopt(_p->c,CURLOPT_TIMEOUT,second);
@@ -170,9 +281,54 @@ int HTTPConnection::setTransferEncoding(bool enable)
     return invokeLib(curl_easy_setopt,_p->c,CURLOPT_TRANSFER_ENCODING,enable?1L:0);
 }
 
+int HTTPConnection::setUserAgent(const std::string& user_agent)
+{
+    return invokeLib(curl_easy_setopt,_p->c,CURLOPT_USERAGENT,user_agent.c_str());
+}
+
+int HTTPConnection::setReferer(const std::string& referer)
+{
+    return invokeLib(curl_easy_setopt,_p->c,CURLOPT_REFERER,referer.c_str());
+}
+
 int HTTPConnection::perform()
 {
     return invokeLib(curl_easy_perform,_p->c);
+}
+
+int HTTPConnection::getResponseCode()
+{
+    long code;
+    invokeLib(curl_easy_getinfo,_p->c,CURLINFO_RESPONSE_CODE,&code);
+    return code;
+}
+
+vector<Cookie> HTTPConnection::getCookies()
+{
+    curl_slist* lst=NULL;
+    invokeLib(curl_easy_getinfo,_p->c,CURLINFO_COOKIELIST,&lst);
+    vector<Cookie> vec;
+    while(lst)
+    {
+        string data=lst->data;
+        Cookie c;
+        string tmp;
+
+        istringstream istr(data);
+        istr>>c.domain;
+        istr>>tmp;
+        c.flag=tmp=="TRUE";
+        istr>>c.path;
+        istr>>tmp;
+        c.secure=tmp=="TRUE";
+        istr>>c.expiration>>c.name>>c.value;
+
+        vec.push_back(c);
+
+        lst=lst->next;
+    }
+    curl_slist_free_all(lst);
+    return vec;
 }
 
 int HTTPConnection::getLastErrCode()
@@ -184,4 +340,3 @@ string HTTPConnection::getLastError()
 {
     return curl_easy_strerror(_p->lasterr);
 }
-
