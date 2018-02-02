@@ -209,7 +209,7 @@ int HTTPConnection::setDataInputFile(const std::string& filename)
 
 int HTTPConnection::enableCookieEngine()
 {
-    return setCookieInputFile("-");/// follow libcurl official document, this can enable the cookie engine with no side effects.
+    return setCookieInputFile("");/// follow libcurl official document, this can enable the cookie engine with no side effects.
 }
 
 int HTTPConnection::setCookieInputFile(const std::string& filename)
