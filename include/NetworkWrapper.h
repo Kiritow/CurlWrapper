@@ -62,6 +62,10 @@ public:
     int setTransferEncoding(bool enable);/// disabled by default
     int setUserAgent(const std::string& user_agent);
     int setReferer(const std::string& referer);
+    int setOrigin(const std::string& origin);
+    int setPostData(const void* data,int sz);
+    int setPostData(const std::string& data);
+    int setFollowLocation(bool enable);/// disabled by default
 
     enum class Method
     {

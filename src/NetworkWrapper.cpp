@@ -302,6 +302,47 @@ int HTTPConnection::setReferer(const std::string& referer)
     return invokeLib(curl_easy_setopt,_p->c,CURLOPT_REFERER,referer.c_str());
 }
 
+int HTTPConnection::setOrigin(const std::string& origin)
+{
+    curl_slist* lst=NULL;
+    invokeLib(curl_easy_getinfo,_p->c,CURLINFO_COOKIELIST,&lst);
+    string s("Origin: ");
+    s.append(origin);
+    curl_slist_append(lst,s.c_str());
+
+    return invokeLib(curl_easy_setopt,_p->c,CURLOPT_HTTPHEADER,lst);
+}
+
+int HTTPConnection::setPostData(const void* data,int sz)
+{
+    invokeLib(curl_easy_setopt,_p->c,CURLOPT_POSTFIELDSIZE,sz);
+    invokeLib(curl_easy_setopt,_p->c,CURLOPT_COPYPOSTFIELDS,data);
+    return 0;
+}
+
+int HTTPConnection::setPostData(const std::string& data)
+{
+    return setPostData(data.c_str(),data.size());
+}
+
+int HTTPConnection::setFollowLocation(bool enable)
+{
+    return invokeLib(curl_easy_setopt,_p->c,CURLOPT_FOLLOWLOCATION,enable?1:0);
+}
+
+int HTTPConnection::setMethod(Method m)
+{
+    switch(m)
+    {
+    case Method::Get:
+        return invokeLib(curl_easy_setopt,_p->c,CURLOPT_HTTPGET,1);
+    case Method::Post:
+        return invokeLib(curl_easy_setopt,_p->c,CURLOPT_POST,1);
+    default:
+        return -2;
+    }
+}
+
 int HTTPConnection::perform()
 {
     return invokeLib(curl_easy_perform,_p->c);
