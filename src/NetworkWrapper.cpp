@@ -262,6 +262,16 @@ int HTTPConnection::setVerbos(bool v)
     return invokeLib(curl_easy_setopt,_p->c,CURLOPT_VERBOSE,v?1:0);
 }
 
+int HTTPConnection::setSSLVerifyPeer(bool enable)
+{
+    return invokeLib(curl_easy_setopt,_p->c,CURLOPT_SSL_VERIFYPEER,enable?1:0);
+}
+
+int HTTPConnection::setSSLVerifyHost(bool enable)
+{
+    return invokeLib(curl_easy_setopt,_p->c,CURLOPT_SSL_VERIFYHOST,enable?2:0);
+}
+
 int HTTPConnection::setHeaderInBody(bool enable)
 {
     return invokeLib(curl_easy_setopt,_p->c,CURLOPT_HEADER,enable?1:0);

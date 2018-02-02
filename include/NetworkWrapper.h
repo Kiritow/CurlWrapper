@@ -25,6 +25,9 @@ public:
 
     /// Behavior Options
     int setVerbos(bool v);/// disabled by default.
+    int setSSLVerifyPeer(bool enable);/// enabled by default.
+    int setSSLVerifyHost(bool enable);/// enabled by default.
+
     int setHeaderInBody(bool enable);/// disabled by default.
 
     int setURL(const std::string& URL);
