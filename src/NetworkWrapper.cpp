@@ -4,7 +4,8 @@
 #include <sstream>
 using namespace std;
 
-#define invokeLib(LibFn,arg1,args...) _p->lasterr=LibFn(arg1,##args)
+/// Use C++11 Standard replacement-list marco.
+#define invokeLib(LibFn,CurlPtr,...) _p->lasterr=LibFn(CurlPtr,##__VA_ARGS__)
 
 class _libcurl_native_init_class
 {
