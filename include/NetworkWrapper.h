@@ -32,6 +32,11 @@ public:
 
     int setURL(const std::string& URL);
 
+    /// If set...OutputBuffer() is called, then an internal data writer function will be used to fill it.
+    /// So don't use set...OutputBuffer() and set...Writer() together.
+    /// If ptr is nullptr and maxsz is not 0, then a new buffer will be created with given size to contain the data. Return -2 on not enough memory.
+    /// If ptr is nullptr and maxsz is 0, then the buffer will be created after received data size is calculated. If there's not enough memory, get...OutputBuffer() will return nullptr.
+    /// get...OutputBuffer() will return internal buffer if used. DO NOT call free or delete on it.
     int setHeaderWriter(const std::function<int(char*,int)>& fn);
     int setHeaderOutputBuffer(void* ptr,int maxsz);
     int setHeaderOutputFile(const std::string& filename);
@@ -79,6 +84,8 @@ public:
     /// Response
     int getResponseCode();
     std::vector<Cookie> getCookies();
+    const void* getHeaderOutputBuffer();
+    const void* getDataOutputBuffer();
 
     /// Error handling
     int getLastErrCode();
