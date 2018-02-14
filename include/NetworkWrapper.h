@@ -85,7 +85,9 @@ public:
     int getResponseCode();
     std::vector<Cookie> getCookies();
     const void* getHeaderOutputBuffer();
+    const int getHeaderOutputBufferLength();
     const void* getDataOutputBuffer();
+    const int getDataOutputBufferLength();
 
     /// Error handling
     int getLastErrCode();

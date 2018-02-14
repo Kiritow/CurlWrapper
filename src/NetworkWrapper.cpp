@@ -3,6 +3,7 @@
 #include <vector>
 #include <sstream>
 #include <memory>
+#include <cstdio>
 using namespace std;
 
 /// Use C++11 Standard replacement-list marco.
@@ -58,7 +59,15 @@ public:
             return true;
         }
         void* nptr=malloc(newMaxsz);
-        if(!nptr) return false; /// out of memory
+        if(!nptr)
+        {
+            fprintf(stderr,"%s(%p): Failed calling extendTo. Out of memory.\n",__func__,this);
+            return false; /// out of memory
+        }
+        else
+        {
+            fprintf(stderr,"%s(%p): extend buffer to size %d\n",__func__,this,newMaxsz);
+        }
 
         memset(nptr,0,newMaxsz);
 
@@ -133,8 +142,6 @@ static size_t _general_data_callback(char* ptr,size_t sz,size_t n,void* userfn)
     return (*reinterpret_cast<function<int(char*,int)>*>(userfn))(ptr,sum);
 }
 
-
-
 static size_t _buffered_data_writer_callback(char* ptr,size_t sz,size_t n,void* pblock)
 {
     int sum=sz*n;
@@ -155,8 +162,9 @@ static size_t _buffered_data_writer_resize_callback(char* ptr,size_t sz,size_t n
     _buffered_data_writer_control_block* p=(_buffered_data_writer_control_block*)pblock;
     if(p->maxsz-p->used<sum)
     {
-        if(!p->extendTo(p->maxsz+sum))
+        if(!p->extendTo(p->maxsz+sum+8))
         {
+            fprintf(stderr,"%s: Failed on calling extendTo with %p.\n",__func__,p);
             return n; /// follow fwrite return result. But what will the data goes...?
         }
     }
@@ -197,6 +205,7 @@ int HTTPConnection::setHeaderOutputBuffer(void* ptr, int maxsz)
 
     if(ptr==nullptr) /// use internal extended buffer.
     {
+        _p->spcHeader->canextend=true;
         invokeLib(curl_easy_setopt,_p->c,CURLOPT_HEADERFUNCTION,_buffered_data_writer_resize_callback);
     }
     else
@@ -451,6 +460,26 @@ vector<Cookie> HTTPConnection::getCookies()
     }
     curl_slist_free_all(lst);
     return vec;
+}
+
+const void* HTTPConnection::getHeaderOutputBuffer()
+{
+    return _p->spcHeader->ptr;
+}
+
+const void* HTTPConnection::getDataOutputBuffer()
+{
+    return _p->spcData->ptr;
+}
+
+const int HTTPConnection::getHeaderOutputBufferLength()
+{
+    return _p->spcHeader->used;
+}
+
+const int HTTPConnection::getDataOutputBufferLength()
+{
+    return _p->spcData->used;
 }
 
 int HTTPConnection::getLastErrCode()
