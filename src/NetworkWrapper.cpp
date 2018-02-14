@@ -2,6 +2,7 @@
 #include "curl/curl.h"
 #include <vector>
 #include <sstream>
+#include <memory>
 using namespace std;
 
 /// Use C++11 Standard replacement-list marco.
@@ -21,15 +22,65 @@ public:
 
     static _libcurl_native_init_class& get()
     {
-        if(_ptr==NULL)
-        {
-            _ptr=new _libcurl_native_init_class;
-        }
-        return *_ptr;
+        static _libcurl_native_init_class _obj;
+        return _obj;
+    }
+};
+
+/// Control block used by internal buffered writer
+class _buffered_data_writer_control_block
+{
+public:
+    /// Not using smart pointer here. maybe a issue...
+    void* ptr;
+    int used;
+    int maxsz;
+    bool canextend;
+
+    _buffered_data_writer_control_block()
+    {
+        ptr=nullptr;
+        used=0;
+        maxsz=0;
+        canextend=false;
     }
 
-private:
-    static _libcurl_native_init_class* _ptr;
+    bool extendTo(int newMaxsz)
+    {
+        if(!canextend)
+        {
+            /// forbidden
+            return false;
+        }
+        if(newMaxsz<=maxsz)
+        {
+            /// Does not need extend...
+            return true;
+        }
+        void* nptr=malloc(newMaxsz);
+        if(!nptr) return false; /// out of memory
+
+        memset(nptr,0,newMaxsz);
+
+        if(ptr)
+        {
+            memcpy(nptr,ptr,used);
+            free(ptr);
+        }
+
+        ptr=nptr;
+        maxsz=newMaxsz;
+        return true;
+    }
+
+    ~_buffered_data_writer_control_block()
+    {
+        if(canextend) /// the ptr is extended.
+        {
+            free(ptr);
+            ptr=nullptr;
+        }
+    }
 };
 
 class HTTPConnection::_impl
@@ -38,6 +89,9 @@ public:
     CURL* c;
     CURLcode lasterr;
     vector<FILE*> delegated_fp;
+
+    /// Internal control blocks
+    shared_ptr<_buffered_data_writer_control_block> spcHeader,spcData;
 };
 
 HTTPConnection::HTTPConnection() : _p(new _impl)
@@ -79,20 +133,37 @@ static size_t _general_data_callback(char* ptr,size_t sz,size_t n,void* userfn)
     return (*reinterpret_cast<function<int(char*,int)>*>(userfn))(ptr,sum);
 }
 
-struct _buffered_data_write_control_block
-{
-    void* ptr;
-    int maxsz;
-    int used;
-};
+
 
 static size_t _buffered_data_writer_callback(char* ptr,size_t sz,size_t n,void* pblock)
 {
     int sum=sz*n;
-    _buffered_data_write_control_block* p=(_buffered_data_write_control_block*)pblock;
+    shared_ptr<_buffered_data_writer_control_block>& p=*(shared_ptr<_buffered_data_writer_control_block>*)pblock;
+    if(p->used<p->maxsz)
+    {
+        /// Ignore n here? or copied an incomplete one?
+        int realcopy=min(sum,p->maxsz-p->used);
+        memcpy((char*)p->ptr+p->used,ptr,realcopy);
+        p->used+=realcopy;
+    }
+    return n;/// follow fwrite return result. But what if realcopy==0? Still follow this?
+}
+
+static size_t _buffered_data_writer_resize_callback(char* ptr,size_t sz,size_t n,void* pblock)
+{
+    int sum=sz*n;
+    shared_ptr<_buffered_data_writer_control_block>& p=*(shared_ptr<_buffered_data_writer_control_block>*)pblock;
+    if(p->maxsz-p->used<sum)
+    {
+        if(!p->extendTo(p->maxsz+sum))
+        {
+            return n; /// follow fwrite return result. But what will the data goes...?
+        }
+    }
+    /// memory is ok now
     memcpy((char*)p->ptr+p->used,ptr,sum);
     p->used+=sum;
-    return n;/// follow fwrite return result.
+    return n;
 }
 
 int HTTPConnection::setDataWriter(const function<int(char*,int)>& fn)
@@ -118,54 +189,53 @@ int HTTPConnection::setDataReader(const function<int(char*, int)>& fn)
 
 int HTTPConnection::setHeaderOutputBuffer(void* ptr, int maxsz)
 {
-    if(ptr==NULL)
+    _p->spcHeader.reset(new _buffered_data_writer_control_block);
+    if(!_p->spcHeader.get())
     {
-        ptr=malloc(maxsz);
-        if(ptr==NULL) return -2;
+        return -2; /// not enough memory
     }
 
-    _buffered_data_write_control_block* pb=(_buffered_data_write_control_block*)malloc(sizeof(_buffered_data_write_control_block));
-    if(pb==NULL)
+    if(ptr==nullptr) /// use internal extended buffer.
     {
-        return -2;
+        invokeLib(curl_easy_setopt,_p->c,CURLOPT_HEADERFUNCTION,_buffered_data_writer_resize_callback);
+    }
+    else
+    {
+        memset(ptr,0,maxsz);
+        _p->spcHeader->ptr=ptr;
+        _p->spcHeader->maxsz=maxsz;
+        _p->spcHeader->canextend=false;
+        invokeLib(curl_easy_setopt,_p->c,CURLOPT_HEADERFUNCTION,_buffered_data_writer_callback);
     }
 
-    memset(ptr,0,maxsz);
-
-
-    pb->ptr=ptr;
-    pb->maxsz=maxsz;
-    pb->used=0;
-
-    invokeLib(curl_easy_setopt,_p->c,CURLOPT_HEADERFUNCTION,_buffered_data_writer_callback);
-    invokeLib(curl_easy_setopt,_p->c,CURLOPT_HEADERDATA,pb);
+    invokeLib(curl_easy_setopt,_p->c,CURLOPT_HEADERDATA,_p->spcHeader.get());
 
     return 0;
 }
 
 int HTTPConnection::setDataOutputBuffer(void* ptr, int maxsz)
 {
-    if(ptr==NULL)
+    _p->spcData.reset(new _buffered_data_writer_control_block);
+    if(!_p->spcData.get())
     {
-        ptr=malloc(maxsz);
-        if(ptr==NULL) return -2;
+        return -2; /// not enough memory
     }
 
-    _buffered_data_write_control_block* pb=(_buffered_data_write_control_block*)malloc(sizeof(_buffered_data_write_control_block));
-    if(pb==NULL)
+    if(ptr==nullptr) /// use internal extended buffer.
     {
-        return -2;
+        _p->spcData->canextend=true;
+        invokeLib(curl_easy_setopt,_p->c,CURLOPT_WRITEFUNCTION,_buffered_data_writer_resize_callback);
+    }
+    else
+    {
+        memset(ptr,0,maxsz);
+        _p->spcData->ptr=ptr;
+        _p->spcData->maxsz=maxsz;
+        _p->spcData->canextend=false;
+        invokeLib(curl_easy_setopt,_p->c,CURLOPT_WRITEFUNCTION,_buffered_data_writer_callback);
     }
 
-    memset(ptr,0,maxsz);
-
-
-    pb->ptr=ptr;
-    pb->maxsz=maxsz;
-    pb->used=0;
-
-    invokeLib(curl_easy_setopt,_p->c,CURLOPT_WRITEFUNCTION,_buffered_data_writer_callback);
-    invokeLib(curl_easy_setopt,_p->c,CURLOPT_WRITEDATA,pb);
+    invokeLib(curl_easy_setopt,_p->c,CURLOPT_WRITEDATA,_p->spcData.get());
 
     return 0;
 }
