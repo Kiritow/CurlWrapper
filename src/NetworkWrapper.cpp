@@ -138,7 +138,7 @@ static size_t _general_data_callback(char* ptr,size_t sz,size_t n,void* userfn)
 static size_t _buffered_data_writer_callback(char* ptr,size_t sz,size_t n,void* pblock)
 {
     int sum=sz*n;
-    shared_ptr<_buffered_data_writer_control_block>& p=*(shared_ptr<_buffered_data_writer_control_block>*)pblock;
+    _buffered_data_writer_control_block* p=(_buffered_data_writer_control_block*)pblock;
     if(p->used<p->maxsz)
     {
         /// Ignore n here? or copied an incomplete one?
@@ -152,7 +152,7 @@ static size_t _buffered_data_writer_callback(char* ptr,size_t sz,size_t n,void* 
 static size_t _buffered_data_writer_resize_callback(char* ptr,size_t sz,size_t n,void* pblock)
 {
     int sum=sz*n;
-    shared_ptr<_buffered_data_writer_control_block>& p=*(shared_ptr<_buffered_data_writer_control_block>*)pblock;
+    _buffered_data_writer_control_block* p=(_buffered_data_writer_control_block*)pblock;
     if(p->maxsz-p->used<sum)
     {
         if(!p->extendTo(p->maxsz+sum))
