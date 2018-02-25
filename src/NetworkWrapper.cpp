@@ -169,6 +169,11 @@ int HTTPConnection::setVerbos(bool v)
     return invokeLib(curl_easy_setopt,_p->c,CURLOPT_VERBOSE,v?1:0);
 }
 
+int HTTPConnection::setErrStream(FILE* stream)
+{
+    return invokeLib(curl_easy_setopt,_p->c,CURLOPT_STDERR,stream);
+}
+
 int HTTPConnection::setSSLVerifyPeer(bool enable)
 {
     return invokeLib(curl_easy_setopt,_p->c,CURLOPT_SSL_VERIFYPEER,enable?1:0);
@@ -479,6 +484,19 @@ int HTTPConnection::setMethod(Method m)
 int HTTPConnection::setURL(const string& URL)
 {
     return invokeLib(curl_easy_setopt,_p->c,CURLOPT_URL,URL.c_str());
+}
+
+int HTTPConnection::setKeepAlive(long idle_second, long interval_second)
+{
+    invokeLib(curl_easy_setopt,_p->c,CURLOPT_TCP_KEEPALIVE,1);
+    invokeLib(curl_easy_setopt,_p->c,CURLOPT_TCP_KEEPIDLE,idle_second);
+    invokeLib(curl_easy_setopt,_p->c,CURLOPT_TCP_KEEPINTVL,interval_second);
+    return 0;
+}
+
+int HTTPConnection::disableKeepAlive()
+{
+    return invokeLib(curl_easy_setopt,_p->c,CURLOPT_TCP_KEEPALIVE,0);
 }
 
 int HTTPConnection::perform()

@@ -3,6 +3,8 @@
 #include <vector>
 #include <functional>
 
+#include <cstdio> /// FILE
+
 class Cookie
 {
 public:
@@ -25,6 +27,7 @@ public:
 
     /// Behavior Options
     int setVerbos(bool v);/// disabled by default.
+    int setErrStream(FILE* stream);
     int setSSLVerifyPeer(bool enable);/// enabled by default.
     int setSSLVerifyHost(bool enable);/// enabled by default.
 
@@ -83,6 +86,10 @@ public:
 
     int setMethod(Method m);/// Method::Get by default.
     int setURL(const std::string& URL);
+
+    /// KeepAlive is disabled by default.
+    int setKeepAlive(long idle_second,long interval_second);
+    int disableKeepAlive();
 
     int perform();
 
