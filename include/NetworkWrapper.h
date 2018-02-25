@@ -97,6 +97,22 @@ public:
     /// Error handling
     int getLastErrCode();
     std::string getLastError();
+
+    /// NetworkWrapper Debug API
+    /// Define NETWORKE_WRAPPER_DEBUG to enable internal debug utilities.
+    /// Otherwise, debug functions will not be usable.
+
+    /// Length of debug queue used to traceback.
+    class debug_info
+    {
+    public:
+        std::string libfn; /// function name of libcurl
+        std::string callfn; /// function name of NetworkWrapper
+        int ret; /// return value of libcurl function
+        int callid; /// call id of NetworkWrapper
+    };
+    int setDebugQueueLength(int length);
+    int traversalDebugQueue(const std::function<int(const debug_info&)>& fn);
 private:
     class _impl;
     _impl* _p;

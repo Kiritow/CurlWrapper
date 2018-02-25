@@ -4,10 +4,29 @@
 #include <sstream>
 #include <memory>
 #include <cstdio>
+#include <list>
 using namespace std;
 
 /// Use C++11 Standard replacement-list marco.
+#ifdef NETWORKE_WRAPPER_DEBUG
+static string _internal_libcurl_getfuncname(void* libfnptr);
+#define invokeLib(LibFn,CurlPtr,...) [&,this](const string& _excall_name){ \
+    debug_info _libcall_info; \
+    _libcall_info.libfn=_internal_libcurl_getfuncname((void*)LibFn); \
+    _libcall_info.callfn=_excall_name; \
+    _p->lasterr=LibFn(CurlPtr,##__VA_ARGS__); \
+    _libcall_info.ret=_p->lasterr; \
+    _libcall_info.callid=_p->_libnextcall_id++; \
+    _p->_libcall.push_back(_libcall_info); \
+    if(_p->_libcall_max>0 && (int)_p->_libcall.size()>_p->_libcall_max) \
+    { \
+        _p->_libcall.pop_front(); \
+    } \
+    return _p->lasterr; \
+}(__func__)
+#else
 #define invokeLib(LibFn,CurlPtr,...) _p->lasterr=LibFn(CurlPtr,##__VA_ARGS__)
+#endif
 
 class _libcurl_native_init_class
 {
@@ -101,6 +120,13 @@ public:
 
     /// Internal control blocks
     shared_ptr<_buffered_data_writer_control_block> spcHeader,spcData;
+
+    #ifdef NETWORKE_WRAPPER_DEBUG
+    /// Debug API Variable
+    list<debug_info> _libcall;
+    int _libcall_max;
+    int _libnextcall_id;
+    #endif
 };
 
 HTTPConnection::HTTPConnection() : _p(new _impl)
@@ -109,6 +135,12 @@ HTTPConnection::HTTPConnection() : _p(new _impl)
     _p->lasterr=CURLE_OK;
 
     _p->c=curl_easy_init();
+
+    #ifdef NETWORKE_WRAPPER_DEBUG
+    /// DebugAPI Initialization
+    _p->_libcall_max=20;
+    _p->_libnextcall_id=0;
+    #endif
 }
 
 HTTPConnection::~HTTPConnection()
@@ -518,3 +550,46 @@ string HTTPConnection::getLastError()
 {
     return curl_easy_strerror(_p->lasterr);
 }
+
+#ifdef NETWORKE_WRAPPER_DEBUG
+/// NetworkWrapper Debug API
+int HTTPConnection::setDebugQueueLength(int length)
+{
+    _p->_libcall_max=length;
+    return 0;
+}
+
+int HTTPConnection::traversalDebugQueue(const function<int(const debug_info&)>& fn)
+{
+    int cnt=0;
+    for(const auto& info:_p->_libcall)
+    {
+        ++cnt;
+        if(fn(info)!=0)
+        {
+            return cnt;
+        }
+    }
+    return cnt;
+}
+
+#define DECLFN(LibFn) if(libfnptr==(void*)LibFn) { return #LibFn ; } else
+static string _internal_libcurl_getfuncname(void* libfnptr)
+{
+    DECLFN(curl_easy_setopt);
+    DECLFN(curl_easy_perform);
+
+    return "(Unknown Function)";
+}
+#undef DECLFN
+#else
+/// NetworkWrapper Debug API (no-op)
+int HTTPConnection::setDebugQueueLength(int length)
+{
+    return 0;
+}
+int HTTPConnection::traversalDebugQueue(const std::function<int(const debug_info&)>& fn)
+{
+    return 0;
+}
+#endif
