@@ -157,6 +157,24 @@ int HTTPConnection::setSignal(bool hasSignal)
     return invokeLib(curl_easy_setopt,_p->c,CURLOPT_NOSIGNAL,hasSignal?0:1);
 }
 
+int HTTPConnection::enableProgress(bool hasProgress)
+{
+    return invokeLib(curl_easy_setopt,_p->c,CURLOPT_NOPROGRESS,hasProgress?0:1);
+}
+
+static int _general_progress_callback(void* userfn,curl_off_t dltotal,curl_off_t dlnow,curl_off_t ultotal,curl_off_t ulnow)
+{
+    return (*reinterpret_cast<function<int(long,long,long,long)>*>(userfn))(dltotal,dlnow,ultotal,ulnow);
+}
+
+int HTTPConnection::setProgressMeter(const function<int(long, long, long, long)>& fn)
+{
+    enableProgress(true);
+    invokeLib(curl_easy_setopt,_p->c,CURLOPT_XFERINFOFUNCTION,_general_progress_callback);
+    invokeLib(curl_easy_setopt,_p->c,CURLOPT_XFERINFODATA,&fn);
+    return 0;
+}
+
 /// Data Functions
 static size_t _general_data_callback(char* ptr,size_t sz,size_t n,void* userfn)
 {
