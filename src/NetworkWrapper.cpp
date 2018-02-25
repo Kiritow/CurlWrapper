@@ -68,11 +68,33 @@ bool HTTPConnection::isReady() const
     return _p&&_p->c;
 }
 
-int HTTPConnection::setURL(const string& URL)
+/// Behavior Options
+int HTTPConnection::setVerbos(bool v)
 {
-    return invokeLib(curl_easy_setopt,_p->c,CURLOPT_URL,URL.c_str());
+    return invokeLib(curl_easy_setopt,_p->c,CURLOPT_VERBOSE,v?1:0);
 }
 
+int HTTPConnection::setSSLVerifyPeer(bool enable)
+{
+    return invokeLib(curl_easy_setopt,_p->c,CURLOPT_SSL_VERIFYPEER,enable?1:0);
+}
+
+int HTTPConnection::setSSLVerifyHost(bool enable)
+{
+    return invokeLib(curl_easy_setopt,_p->c,CURLOPT_SSL_VERIFYHOST,enable?2:0);
+}
+
+int HTTPConnection::setHeaderInBody(bool enable)
+{
+    return invokeLib(curl_easy_setopt,_p->c,CURLOPT_HEADER,enable?1:0);
+}
+
+int HTTPConnection::setSignal(bool hasSignal)
+{
+    return invokeLib(curl_easy_setopt,_p->c,CURLOPT_NOSIGNAL,hasSignal?0:1);
+}
+
+/// Data Functions
 static size_t _general_data_callback(char* ptr,size_t sz,size_t n,void* userfn)
 {
     int sum=sz*n;
@@ -257,25 +279,7 @@ int HTTPConnection::setTimeout(int second)
     return curl_easy_setopt(_p->c,CURLOPT_TIMEOUT,second);
 }
 
-int HTTPConnection::setVerbos(bool v)
-{
-    return invokeLib(curl_easy_setopt,_p->c,CURLOPT_VERBOSE,v?1:0);
-}
 
-int HTTPConnection::setSSLVerifyPeer(bool enable)
-{
-    return invokeLib(curl_easy_setopt,_p->c,CURLOPT_SSL_VERIFYPEER,enable?1:0);
-}
-
-int HTTPConnection::setSSLVerifyHost(bool enable)
-{
-    return invokeLib(curl_easy_setopt,_p->c,CURLOPT_SSL_VERIFYHOST,enable?2:0);
-}
-
-int HTTPConnection::setHeaderInBody(bool enable)
-{
-    return invokeLib(curl_easy_setopt,_p->c,CURLOPT_HEADER,enable?1:0);
-}
 
 int HTTPConnection::setAcceptEncoding(const std::string& encoding)
 {
@@ -341,6 +345,11 @@ int HTTPConnection::setMethod(Method m)
     default:
         return -2;
     }
+}
+
+int HTTPConnection::setURL(const string& URL)
+{
+    return invokeLib(curl_easy_setopt,_p->c,CURLOPT_URL,URL.c_str());
 }
 
 int HTTPConnection::perform()

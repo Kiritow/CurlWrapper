@@ -29,8 +29,7 @@ public:
     int setSSLVerifyHost(bool enable);/// enabled by default.
 
     int setHeaderInBody(bool enable);/// disabled by default.
-
-    int setURL(const std::string& URL);
+    int setSignal(bool hasSignal);/// enabled by default.
 
     /// If set...OutputBuffer() is called, then an internal data writer function will be used to fill it.
     /// So don't use set...OutputBuffer() and set...Writer() together.
@@ -78,6 +77,7 @@ public:
     };
 
     int setMethod(Method m);/// Method::Get by default.
+    int setURL(const std::string& URL);
 
     int perform();
 
