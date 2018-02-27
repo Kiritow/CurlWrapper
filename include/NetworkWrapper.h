@@ -37,7 +37,7 @@ public:
     /// Set the progress meter will automatically enable progress.
     /// The callback set by setProgressMeter() must return 0. If a non-zero value is returned, the data transfer process will be aborted.
     int enableProgress(bool hasProgress);/// disabled by default.
-    int setProgressMeter(const std::function<int(long,long,long,long)>& fn);
+	int setProgressMeter(const std::function<int(long long, long long, long long, long long)>& fn);
 
     /// If set...OutputBuffer() is called, then an internal data writer function will be used to fill it.
     /// So don't use set...OutputBuffer() and set...Writer() together.

@@ -28,6 +28,29 @@ static string _internal_libcurl_getfuncname(void* libfnptr);
 #define invokeLib(LibFn,CurlPtr,...) _p->lasterr=LibFn(CurlPtr,##__VA_ARGS__)
 #endif
 
+#ifdef _MSC_VER
+#ifdef _CRT_SECURE_NO_WARNINGS
+#pragma message("[WARNING] Stop C runtime secure check may cause bugs.")
+#else
+/// Stop SDL check errors in VS. (Even if SDL check is disabled...)
+FILE* _fopen_bridge(const char* filename, const char* mode)
+{
+	FILE* fp = NULL;
+	if (fopen_s(&fp, filename, mode) != 0)
+	{
+		return NULL;
+	}
+	else
+	{
+		return fp;
+	}
+}
+/// Replace deprecated functions
+#define fopen _fopen_bridge
+
+#endif
+#endif
+
 class _libcurl_native_init_class
 {
 public:
@@ -201,10 +224,10 @@ int HTTPConnection::enableProgress(bool hasProgress)
 
 static int _general_progress_callback(void* userfn,curl_off_t dltotal,curl_off_t dlnow,curl_off_t ultotal,curl_off_t ulnow)
 {
-    return (*reinterpret_cast<function<int(long,long,long,long)>*>(userfn))(dltotal,dlnow,ultotal,ulnow);
+    return (*reinterpret_cast<function<int(long long,long long,long long,long long)>*>(userfn))(dltotal,dlnow,ultotal,ulnow);
 }
 
-int HTTPConnection::setProgressMeter(const function<int(long, long, long, long)>& fn)
+int HTTPConnection::setProgressMeter(const function<int(long long, long long, long long, long long)>& fn)
 {
     enableProgress(true);
     invokeLib(curl_easy_setopt,_p->c,CURLOPT_XFERINFOFUNCTION,_general_progress_callback);
@@ -610,4 +633,11 @@ int HTTPConnection::traversalDebugQueue(const std::function<int(const debug_info
 {
     return 0;
 }
+#endif
+
+/// Undefine
+#ifdef _MSC_VER
+#ifndef _CRT_SECURE_NO_WARNINGS
+#undef fopen
+#endif
 #endif
