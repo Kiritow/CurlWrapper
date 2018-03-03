@@ -100,6 +100,7 @@ public:
     const int getHeaderOutputBufferLength();
     const void* getDataOutputBuffer();
     const int getDataOutputBufferLength();
+    std::string getRedirectURL();
 
     /// Error handling
     int getLastErrCode();

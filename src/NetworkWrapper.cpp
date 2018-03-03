@@ -582,6 +582,20 @@ const int HTTPConnection::getDataOutputBufferLength()
     return _p->spcData->used;
 }
 
+string HTTPConnection::getRedirectURL()
+{
+    char* url=NULL;
+    invokeLib(curl_easy_getinfo,_p->c,CURLINFO_REDIRECT_URL,&url);
+    if(url)
+    {
+        return url;
+    }
+    else
+    {
+        return "";
+    }
+}
+
 int HTTPConnection::getLastErrCode()
 {
     return _p->lasterr;
