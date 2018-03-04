@@ -1,8 +1,11 @@
 # Codeblocks
 bin/
 obj/
+
 /*.dll
 /*.exe
+/*.txt
+
 *.cbp
 *.depend
 *.layout

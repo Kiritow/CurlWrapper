@@ -596,6 +596,90 @@ string HTTPConnection::getRedirectURL()
     }
 }
 
+int HTTPConnection::getRedirectCount()
+{
+    long cnt=0;
+    invokeLib(curl_easy_getinfo,_p->c,CURLINFO_REDIRECT_COUNT,&cnt);
+    return cnt;
+}
+
+string HTTPConnection::getContentType()
+{
+    char* ct=NULL;
+    invokeLib(curl_easy_getinfo,_p->c,CURLINFO_CONTENT_TYPE,&ct);
+    if(ct)
+    {
+        return string(ct);
+    }
+    else
+    {
+        return "";
+    }
+}
+
+int HTTPConnection::getContentLengthDownload()
+{
+    curl_off_t sz;
+    invokeLib(curl_easy_getinfo,_p->c,CURLINFO_CONTENT_LENGTH_DOWNLOAD_T,&sz);
+    return sz;
+}
+
+int HTTPConnection::getContentLengthUpload()
+{
+    curl_off_t sz;
+    invokeLib(curl_easy_getinfo,_p->c,CURLINFO_CONTENT_LENGTH_UPLOAD_T,&sz);
+    return sz;
+}
+
+double HTTPConnection::getNameLookUpTime()
+{
+    double t=0;
+    invokeLib(curl_easy_getinfo,_p->c,CURLINFO_NAMELOOKUP_TIME,&t);
+    return t;
+}
+
+double HTTPConnection::getConnectTime()
+{
+    double t=0;
+    invokeLib(curl_easy_getinfo,_p->c,CURLINFO_CONNECT_TIME,&t);
+    return t;
+}
+
+double HTTPConnection::getAppConnectTime()
+{
+    double t=0;
+    invokeLib(curl_easy_getinfo,_p->c,CURLINFO_APPCONNECT_TIME,&t);
+    return t;
+}
+
+double HTTPConnection::getPretransferTime()
+{
+    double t=0;
+    invokeLib(curl_easy_getinfo,_p->c,CURLINFO_PRETRANSFER_TIME,&t);
+    return t;
+}
+
+double HTTPConnection::getStartTransferTime()
+{
+    double t=0;
+    invokeLib(curl_easy_getinfo,_p->c,CURLINFO_STARTTRANSFER_TIME,&t);
+    return t;
+}
+
+double HTTPConnection::getTotalTime()
+{
+    double t=0;
+    invokeLib(curl_easy_getinfo,_p->c,CURLINFO_TOTAL_TIME,&t);
+    return t;
+}
+
+double HTTPConnection::getRedirectTime()
+{
+    double t=0;
+    invokeLib(curl_easy_getinfo,_p->c,CURLINFO_REDIRECT_TIME,&t);
+    return t;
+}
+
 int HTTPConnection::getLastErrCode()
 {
     return _p->lasterr;

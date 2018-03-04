@@ -101,6 +101,19 @@ public:
     const void* getDataOutputBuffer();
     const int getDataOutputBufferLength();
     std::string getRedirectURL();
+    int getRedirectCount();
+    std::string getContentType();
+    int getContentLengthDownload();
+    int getContentLengthUpload();
+
+    /// Time query
+    double getNameLookUpTime();
+    double getConnectTime();
+    double getAppConnectTime();
+    double getPretransferTime();
+    double getStartTransferTime();
+    double getTotalTime();
+    double getRedirectTime();
 
     /// Error handling
     int getLastErrCode();
