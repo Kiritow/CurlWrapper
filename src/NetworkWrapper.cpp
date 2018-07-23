@@ -522,6 +522,34 @@ int HTTPConnection::disableKeepAlive()
     return invokeLib(curl_easy_setopt,_p->c,CURLOPT_TCP_KEEPALIVE,0);
 }
 
+int HTTPConnection::setProxyType(const ProxyType& type)
+{
+	switch (type)
+	{
+	case ProxyType::Http:
+		return invokeLib(curl_easy_setopt, _p->c, CURLOPT_PROXYTYPE, CURLPROXY_HTTP);
+	case ProxyType::Https:
+		return invokeLib(curl_easy_setopt, _p->c, CURLOPT_PROXYTYPE, CURLPROXY_HTTPS);
+	case ProxyType::Http1_0:
+		return invokeLib(curl_easy_setopt, _p->c, CURLOPT_PROXYTYPE, CURLPROXY_HTTP_1_0);
+	case ProxyType::Socks4:
+		return invokeLib(curl_easy_setopt, _p->c, CURLOPT_PROXYTYPE, CURLPROXY_SOCKS4);
+	case ProxyType::Socks4a:
+		return invokeLib(curl_easy_setopt, _p->c, CURLOPT_PROXYTYPE, CURLPROXY_SOCKS4A);
+	case ProxyType::Socks5:
+		return invokeLib(curl_easy_setopt, _p->c, CURLOPT_PROXYTYPE, CURLPROXY_SOCKS5);
+	case ProxyType::Socks5_Hostname:
+		return invokeLib(curl_easy_setopt, _p->c, CURLOPT_PROXYTYPE, CURLPROXY_SOCKS5_HOSTNAME);
+	default:
+		return -2;
+	}
+}
+
+int HTTPConnection::setProxy(const std::string & proxy)
+{
+	return invokeLib(curl_easy_setopt, _p->c, CURLOPT_PROXY, proxy.c_str());
+}
+
 int HTTPConnection::perform()
 {
     return invokeLib(curl_easy_perform,_p->c);

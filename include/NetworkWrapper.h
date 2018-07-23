@@ -91,6 +91,21 @@ public:
     int setKeepAlive(long idle_second,long interval_second);
     int disableKeepAlive();
 
+	// Network Options
+
+	// Set proxy to use. The protocol can be http,https,socks4,socks4a,socks5,socks5h
+	// Syntax: protocol://
+	// Or call setProxyType instead.
+	// Proxy is not used by default.
+	int setProxy(const std::string& proxy);
+	enum class ProxyType
+	{
+		Http, Https, Http1_0, 
+		Socks4, Socks4a, Socks5, Socks5_Hostname
+	};
+	int setProxyType(const ProxyType& type);
+	
+
     int perform();
 
     /// Response
