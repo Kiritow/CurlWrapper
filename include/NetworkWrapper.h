@@ -85,7 +85,9 @@ public:
     };
 
     int setMethod(Method m);/// Method::Get by default.
-    int setURL(const std::string& URL);
+	int setURL(const std::string& URL);
+	std::string escape(const std::string& rawURL);
+	std::string unescape(const std::string& URL);
 
     /// KeepAlive is disabled by default.
     int setKeepAlive(long idle_second,long interval_second);
@@ -104,7 +106,6 @@ public:
 		Socks4, Socks4a, Socks5, Socks5_Hostname
 	};
 	int setProxyType(const ProxyType& type);
-	
 
     int perform();
 

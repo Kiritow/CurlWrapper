@@ -506,7 +506,23 @@ int HTTPConnection::setMethod(Method m)
 
 int HTTPConnection::setURL(const string& URL)
 {
-    return invokeLib(curl_easy_setopt,_p->c,CURLOPT_URL,URL.c_str());
+	return invokeLib(curl_easy_setopt, _p->c, CURLOPT_URL, URL.c_str());
+}
+
+std::string HTTPConnection::escape(const std::string& rawURL)
+{
+	char* p = curl_easy_escape(_p->c, rawURL.c_str(), rawURL.size());
+	std::string s(p);
+	curl_free(p);
+	return s;
+}
+
+std::string HTTPConnection::unescape(const std::string& URL)
+{
+	char* p = curl_easy_unescape(_p->c, URL.c_str(), URL.size());
+	std::string s(p);
+	curl_free(p);
+	return s;
 }
 
 int HTTPConnection::setKeepAlive(long idle_second, long interval_second)
