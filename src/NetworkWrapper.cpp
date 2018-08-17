@@ -519,8 +519,9 @@ std::string HTTPConnection::escape(const std::string& rawURL)
 
 std::string HTTPConnection::unescape(const std::string& URL)
 {
-	char* p = curl_easy_unescape(_p->c, URL.c_str(), URL.size());
-	std::string s(p);
+	int len = 0;
+	char* p = curl_easy_unescape(_p->c, URL.c_str(), URL.size(), &len);
+	std::string s(p, len);
 	curl_free(p);
 	return s;
 }
@@ -564,6 +565,11 @@ int HTTPConnection::setProxyType(const ProxyType& type)
 int HTTPConnection::setProxy(const std::string & proxy)
 {
 	return invokeLib(curl_easy_setopt, _p->c, CURLOPT_PROXY, proxy.c_str());
+}
+
+int HTTPConnection::setPreProxy(const std::string & preproxy)
+{
+	return invokeLib(curl_easy_setopt, _p->c, CURLOPT_PRE_PROXY, preproxy.c_str());
 }
 
 int HTTPConnection::perform()

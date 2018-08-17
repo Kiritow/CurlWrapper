@@ -100,6 +100,8 @@ public:
 	// Or call setProxyType instead.
 	// Proxy is not used by default.
 	int setProxy(const std::string& proxy);
+	// Pre-proxy can only be SOCKS proxy. Port is 1080 by default.
+	int setPreProxy(const std::string& preproxy);
 	enum class ProxyType
 	{
 		Http, Https, Http1_0, 
